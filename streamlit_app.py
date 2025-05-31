@@ -206,33 +206,49 @@ def plot_eda_graphs(df):
         st.info("Lütfen en az bir grafik seçin.")
         return
     if "Cinsiyete Göre Hayatta Kalma Oranı (Bar)" in selected:
-        st.markdown("**Cinsiyete Göre Hayatta Kalma Oranı**")
+        st.markdown("**Cinsiyete Göre Hayatta Kalma Oranı (%)**")
         fig, ax = plt.subplots()
-        sns.barplot(x='Sex', y='Survived', data=df, ci=None, ax=ax)
-        ax.set_ylabel('Hayatta Kalma Oranı')
+        data = df.groupby('Sex')['Survived'].mean().reset_index()
+        data['Survived'] = data['Survived'] * 100
+        sns.barplot(x='Sex', y='Survived', data=data, ci=None, ax=ax)
+        ax.set_ylabel('Hayatta Kalma Oranı (%)')
+        for i, v in enumerate(data['Survived']):
+            ax.text(i, v + 1, f"%{v:.1f}", ha='center')
         st.pyplot(fig)
         plt.close(fig)
     if "Sınıfa Göre Hayatta Kalma Oranı (Bar)" in selected:
-        st.markdown("**Sınıfa Göre Hayatta Kalma Oranı**")
+        st.markdown("**Sınıfa Göre Hayatta Kalma Oranı (%)**")
         fig, ax = plt.subplots()
-        sns.barplot(x='Pclass', y='Survived', data=df, ci=None, ax=ax)
-        ax.set_ylabel('Hayatta Kalma Oranı')
+        data = df.groupby('Pclass')['Survived'].mean().reset_index()
+        data['Survived'] = data['Survived'] * 100
+        sns.barplot(x='Pclass', y='Survived', data=data, ci=None, ax=ax)
+        ax.set_ylabel('Hayatta Kalma Oranı (%)')
+        for i, v in enumerate(data['Survived']):
+            ax.text(i, v + 1, f"%{v:.1f}", ha='center')
         st.pyplot(fig)
         plt.close(fig)
     if "Biniş Limanına Göre Hayatta Kalma Oranı (Bar)" in selected:
-        st.markdown("**Biniş Limanına Göre Hayatta Kalma Oranı**")
+        st.markdown("**Biniş Limanına Göre Hayatta Kalma Oranı (%)**")
         fig, ax = plt.subplots()
-        sns.barplot(x='Embarked', y='Survived', data=df, ci=None, ax=ax)
-        ax.set_ylabel('Hayatta Kalma Oranı')
+        data = df.groupby('Embarked')['Survived'].mean().reset_index()
+        data['Survived'] = data['Survived'] * 100
+        sns.barplot(x='Embarked', y='Survived', data=data, ci=None, ax=ax)
+        ax.set_ylabel('Hayatta Kalma Oranı (%)')
+        for i, v in enumerate(data['Survived']):
+            ax.text(i, v + 1, f"%{v:.1f}", ha='center')
         st.pyplot(fig)
         plt.close(fig)
     if "Aile Büyüklüğüne Göre Hayatta Kalma Oranı (Bar)" in selected:
-        st.markdown("**Aile Büyüklüğüne Göre Hayatta Kalma Oranı**")
+        st.markdown("**Aile Büyüklüğüne Göre Hayatta Kalma Oranı (%)**")
         temp = df.copy()
         temp['FamilySize'] = temp['SibSp'] + temp['Parch'] + 1
+        data = temp.groupby('FamilySize')['Survived'].mean().reset_index()
+        data['Survived'] = data['Survived'] * 100
         fig, ax = plt.subplots()
-        sns.barplot(x='FamilySize', y='Survived', data=temp, ci=None, ax=ax)
-        ax.set_ylabel('Hayatta Kalma Oranı')
+        sns.barplot(x='FamilySize', y='Survived', data=data, ci=None, ax=ax)
+        ax.set_ylabel('Hayatta Kalma Oranı (%)')
+        for i, v in enumerate(data['Survived']):
+            ax.text(i, v + 1, f"%{v:.1f}", ha='center')
         st.pyplot(fig)
         plt.close(fig)
     if "Yaş Dağılımı (KDE)" in selected:
@@ -258,16 +274,18 @@ def plot_eda_graphs(df):
         st.pyplot(fig)
         plt.close(fig)
     if "Cinsiyet Dağılımı (Pie)" in selected:
-        st.markdown("**Cinsiyet Dağılımı (Pie Chart)**")
+        st.markdown("**Cinsiyet Dağılımı (Pie Chart, %)**")
         fig, ax = plt.subplots()
-        df['Sex'].value_counts().plot.pie(autopct='%1.1f%%', ax=ax, colors=['#66b3ff','#ff9999'])
+        counts = df['Sex'].value_counts(normalize=True) * 100
+        counts.plot.pie(autopct='%1.1f%%', ax=ax, colors=['#66b3ff','#ff9999'])
         ax.set_ylabel('')
         st.pyplot(fig)
         plt.close(fig)
     if "Sınıf Dağılımı (Pie)" in selected:
-        st.markdown("**Sınıf Dağılımı (Pie Chart)**")
+        st.markdown("**Sınıf Dağılımı (Pie Chart, %)**")
         fig, ax = plt.subplots()
-        df['Pclass'].value_counts().sort_index().plot.pie(autopct='%1.1f%%', ax=ax)
+        counts = df['Pclass'].value_counts(normalize=True).sort_index() * 100
+        counts.plot.pie(autopct='%1.1f%%', ax=ax)
         ax.set_ylabel('')
         st.pyplot(fig)
         plt.close(fig)
@@ -281,7 +299,6 @@ def plot_eda_graphs(df):
     if "Pairplot (Temel Değişkenler)" in selected:
         st.markdown("**Temel Değişkenler Arası İlişkiler (Pairplot)**")
         st.info("Pairplot büyük veri setlerinde yavaş olabilir. Sadece ilk 200 satır gösteriliyor.")
-        import seaborn as sns
         fig = sns.pairplot(df[['Age','Fare','Pclass','Survived','SibSp','Parch']].dropna().sample(min(200, len(df))), hue='Survived')
         st.pyplot(fig)
         plt.close('all')
