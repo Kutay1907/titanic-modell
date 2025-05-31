@@ -610,76 +610,71 @@ class TitanicPredictor:
 
     def train_models(self, X_train, y_train):
         """Modelleri eğit"""
-        # Temel modeller için GridSearchCV'de kullanılacak ortak metrikler
         scoring_metrics = {
             'accuracy': 'accuracy',
             'f1_macro': 'f1_macro',
             'precision_macro': 'precision_macro',
             'recall_macro': 'recall_macro'
         }
-        refit_metric = 'f1_macro' # En iyi parametreleri f1_macro'ya göre seç
+        refit_metric = 'f1_macro'
 
-        # Logistic Regression
-        lr_params = {'C': [0.1, 1.0, 10], 'solver': ['liblinear'], 'max_iter': [1000, 2000]}
+        # Logistic Regression (tek parametre)
+        lr_params = {'C': [1.0], 'solver': ['liblinear'], 'max_iter': [1000]}
         self.models['Logistic Regression'] = GridSearchCV(
             LogisticRegression(random_state=42),
             lr_params,
-            cv=5, # CV sayısını artırabiliriz
+            cv=3,
             scoring=scoring_metrics,
             refit=refit_metric,
             n_jobs=-1
         )
-        
-        # Decision Tree
-        dt_params = {'max_depth': [3, 5, 7, 10], 'min_samples_split': [2, 5, 10], 'min_samples_leaf': [1, 2, 4]}
+        # Decision Tree (tek parametre)
+        dt_params = {'max_depth': [5], 'min_samples_split': [2], 'min_samples_leaf': [1]}
         self.models['Decision Tree'] = GridSearchCV(
             DecisionTreeClassifier(random_state=42),
             dt_params,
-            cv=5,
+            cv=3,
             scoring=scoring_metrics,
             refit=refit_metric,
             n_jobs=-1
         )
-        
-        # KNN
-        knn_params = {'n_neighbors': [3, 5, 7, 9], 'weights': ['uniform', 'distance']}
+        # KNN (tek parametre)
+        knn_params = {'n_neighbors': [5], 'weights': ['uniform']}
         self.models['KNN'] = GridSearchCV(
             KNeighborsClassifier(),
             knn_params,
-            cv=5,
+            cv=3,
             scoring=scoring_metrics,
             refit=refit_metric,
             n_jobs=-1
         )
-        
-        # Random Forest
+        # Random Forest (tek parametre)
         rf_params = {
-            'n_estimators': [100, 200],
-            'max_depth': [5, 7, 10],
-            'min_samples_split': [2, 5, 10],
-            'min_samples_leaf': [1, 2, 4]
+            'n_estimators': [100],
+            'max_depth': [7],
+            'min_samples_split': [2],
+            'min_samples_leaf': [1]
         }
         self.models['Random Forest'] = GridSearchCV(
             RandomForestClassifier(random_state=42),
             rf_params,
-            cv=5,
+            cv=3,
             scoring=scoring_metrics,
             refit=refit_metric,
             n_jobs=-1
         )
-        
-        # XGBoost
+        # XGBoost (tek parametre)
         xgb_params = {
-            'n_estimators': [100, 200],
-            'max_depth': [3, 5, 7],
-            'learning_rate': [0.05, 0.1],
-            'subsample': [0.7, 1.0],
-            'colsample_bytree': [0.7, 1.0]
+            'n_estimators': [100],
+            'max_depth': [3],
+            'learning_rate': [0.1],
+            'subsample': [1.0],
+            'colsample_bytree': [1.0]
         }
         self.models['XGBoost'] = GridSearchCV(
-            XGBClassifier(random_state=42, eval_metric='logloss'), # use_label_encoder kaldırıldı
+            XGBClassifier(random_state=42, eval_metric='logloss'),
             xgb_params,
-            cv=5,
+            cv=3,
             scoring=scoring_metrics,
             refit=refit_metric,
             n_jobs=-1
