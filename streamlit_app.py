@@ -361,6 +361,52 @@ if st.session_state.train_df is not None:
             else:
                 st.write("No numeric features to plot correlation matrix for in raw data.")
 
+    st.markdown("---")
+    st.write("**Filtrelenmiş veri örneği:**")
+    if 'Name' in df.columns:
+        df['Name'] = df['Name'].astype(str)
+    st.dataframe(df.head())
+    st.write(f"Veri şekli: {df.shape}")
+    st.info("Sol menüden filtreleri değiştirerek analizleri dinamik olarak güncelleyebilirsiniz.")
+
+    if st.button("Show EDA Plots", key="show_eda_plots"):
+        with st.spinner("Generating EDA plots..."):
+            # Ensure predictor.data is set for plot_data_analysis
+            if predictor.data is None or not predictor.data.equals(df):
+                 predictor.data = df.copy()
+
+            st.subheader("Key Feature Analysis (from `plot_data_analysis`)")
+            st.info("The `plot_data_analysis` method in the original script generates multiple plots. For Streamlit, it's better if such methods return figure objects or are called individually. Below are some representative plots.")
+
+            # We'll try to call the main plot_data_analysis. If it uses plt.show() for each, 
+            # Streamlit might pick them up. If not, individual plotting calls are better.
+            # predictor.plot_data_analysis() # This is likely problematic for Streamlit.
+            
+            # Replicating some plots manually for better control:
+            fig_age, ax_age = plt.subplots()
+            sns.kdeplot(data=df, x='Age', hue='Survived', fill=True, ax=ax_age)
+            ax_age.set_title('Age Distribution by Survival')
+            st.pyplot(fig_age)
+            plt.close(fig_age)
+
+            fig_fare, ax_fare = plt.subplots()
+            sns.boxplot(x='Pclass', y='Fare', hue='Survived', data=df, ax=ax_fare)
+            ax_fare.set_title('Fare Distribution by Pclass and Survival')
+            st.pyplot(fig_fare)
+            plt.close(fig_fare)
+
+            # Correlation Matrix (on preprocessed data later, or on raw numeric data here)
+            st.subheader("Correlation Matrix (Numeric Features of Raw Data)")
+            numeric_df = df.select_dtypes(include=np.number)
+            if not numeric_df.empty:
+                fig_corr, ax_corr = plt.subplots(figsize=(12, 10))
+                sns.heatmap(numeric_df.corr(), annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5, ax=ax_corr)
+                ax_corr.set_title('Correlation Matrix of Numeric Features')
+                st.pyplot(fig_corr)
+                plt.close(fig_corr)
+            else:
+                st.write("No numeric features to plot correlation matrix for in raw data.")
+
 
     st.header("⚙️ Model Training & Evaluation")
     if st.button("🚀 Train Models & Evaluate", key="train_models_button"):
