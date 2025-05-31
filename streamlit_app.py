@@ -323,7 +323,7 @@ if st.session_state.train_df is not None:
     # Gelişmiş EDA grafikleri
     plot_eda_graphs(df)
 
-    if st.button("Show EDA Plots", key="show_eda_plots"):
+    if st.button("Show EDA Plots", key="show_eda_plots_main"):
         with st.spinner("Generating EDA plots..."):
             # Ensure predictor.data is set for plot_data_analysis
             if predictor.data is None or not predictor.data.equals(df):
@@ -369,7 +369,7 @@ if st.session_state.train_df is not None:
     st.write(f"Veri şekli: {df.shape}")
     st.info("Sol menüden filtreleri değiştirerek analizleri dinamik olarak güncelleyebilirsiniz.")
 
-    if st.button("Show EDA Plots", key="show_eda_plots"):
+    if st.button("Show EDA Plots", key="show_eda_plots_main"):
         with st.spinner("Generating EDA plots..."):
             # Ensure predictor.data is set for plot_data_analysis
             if predictor.data is None or not predictor.data.equals(df):
