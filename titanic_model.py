@@ -27,7 +27,13 @@ import joblib # Model ve nesneleri kaydetmek/yüklemek için
 warnings.filterwarnings('ignore')
 
 # Görselleştirme ayarları
-plt.style.use('seaborn')
+try:
+    plt.style.use('seaborn-v0_8-darkgrid')
+except:
+    try:
+        plt.style.use('seaborn')
+    except:
+        pass  # Hiçbiri yoksa varsayılanı kullan
 sns.set_palette("husl")
 
 """## Model Sınıfını Tanımla"""
