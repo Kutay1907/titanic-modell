@@ -88,7 +88,11 @@ def reset_app_state():
 st.title("🚢 Titanic Survival Prediction Interactive Dashboard")
 
 # --- Sidebar for Navigation/Controls ---
-st.sidebar.title("Controls & Options")
+st.sidebar.title("🚢 Titanic Survival Prediction")
+st.sidebar.markdown("""
+Bu uygulama, Titanic yolcularının hayatta kalıp kalamayacağını makine öğrenmesi ile tahmin eder. 
+Veri analizi, model karşılaştırma ve bireysel tahmin özellikleri sunar.
+""")
 
 if st.sidebar.button("🔄 Reset All & Start Over"):
     reset_app_state()
@@ -99,23 +103,43 @@ default_test_file = 'test (2).csv'
 
 # Radio button for data source selection
 data_source = st.sidebar.radio(
-    "Select data source:",
-    ('Use default dataset files', 'Upload custom CSV files'),
+    "Veri kaynağı seç:",
+    ('Varsayılan dosyaları kullan', 'CSV dosyası yükle'),
     key='data_source_selection'
 )
 
 train_file_path = default_train_file
 test_file_path = default_test_file
 
-if data_source == 'Upload custom CSV files':
-    uploaded_train_file = st.sidebar.file_uploader("Upload Training CSV", type="csv", key="train_uploader")
-    uploaded_test_file = st.sidebar.file_uploader("Upload Test CSV", type="csv", key="test_uploader")
+if data_source == 'CSV dosyası yükle':
+    uploaded_train_file = st.sidebar.file_uploader("Eğitim CSV", type="csv", key="train_uploader")
+    uploaded_test_file = st.sidebar.file_uploader("Test CSV", type="csv", key="test_uploader")
     if uploaded_train_file: train_file_path = uploaded_train_file
     if uploaded_test_file: test_file_path = uploaded_test_file
 else: # Use default
-    st.sidebar.markdown(f"Default train: `{default_train_file}`")
-    st.sidebar.markdown(f"Default test: `{default_test_file}`")
+    st.sidebar.markdown(f"Varsayılan eğitim: `{default_train_file}`")
+    st.sidebar.markdown(f"Varsayılan test: `{default_test_file}`")
 
+
+# --- Dinamik filtreler ---
+st.sidebar.header("Veri Filtresi")
+filter_sex = st.sidebar.multiselect("Cinsiyet", ['male', 'female'], default=['male', 'female'])
+filter_pclass = st.sidebar.multiselect("Sınıf", [1,2,3], default=[1,2,3])
+filter_age = st.sidebar.slider("Yaş Aralığı", 0, 80, (0,80))
+
+# --- Model seçimi ---
+st.sidebar.header("Model Seçimi")
+model_options = ["Otomatik (En iyi CV F1)", "Logistic Regression", "Decision Tree", "KNN", "Random Forest", "XGBoost", "Voting Hard", "Voting Soft", "Stacking"]
+selected_model = st.sidebar.selectbox("Kullanılacak Model", model_options, index=0)
+
+# --- Özet kutuları için yardımcı fonksiyon ---
+def summary_card(title, value, color='#4F8BF9'):
+    st.markdown(f"""
+    <div style='background-color:{color};padding:10px 20px;border-radius:10px;margin-bottom:10px'>
+        <h4 style='color:white;margin-bottom:0'>{title}</h4>
+        <h2 style='color:white;margin-top:0'>{value}</h2>
+    </div>
+    """, unsafe_allow_html=True)
 
 if st.sidebar.button("Load Data", key="load_data_button"):
     # Reset relevant parts of state before loading new data, but keep predictor object
@@ -160,6 +184,109 @@ if st.sidebar.button("Load Data", key="load_data_button"):
     st.rerun()
 
 
+# --- EDA (Keşifsel Veri Analizi) Gelişmiş ---
+def plot_eda_graphs(df):
+    st.subheader("📊 Gelişmiş EDA (Keşifsel Veri Analizi) Grafikleri")
+    st.write("Aşağıdan görmek istediğiniz grafikleri seçebilirsiniz:")
+    eda_options = [
+        "Cinsiyete Göre Hayatta Kalma Oranı (Bar)",
+        "Sınıfa Göre Hayatta Kalma Oranı (Bar)",
+        "Biniş Limanına Göre Hayatta Kalma Oranı (Bar)",
+        "Aile Büyüklüğüne Göre Hayatta Kalma Oranı (Bar)",
+        "Yaş Dağılımı (KDE)",
+        "Fare Dağılımı (Boxplot)",
+        "Korelasyon Matrisi (Heatmap)",
+        "Cinsiyet Dağılımı (Pie)",
+        "Sınıf Dağılımı (Pie)",
+        "Fare-Yaş Dağılımı (Scatter)",
+        "Pairplot (Temel Değişkenler)",
+    ]
+    selected = st.multiselect("Grafik Seç:", eda_options, default=eda_options[:3])
+    if not selected:
+        st.info("Lütfen en az bir grafik seçin.")
+        return
+    if "Cinsiyete Göre Hayatta Kalma Oranı (Bar)" in selected:
+        st.markdown("**Cinsiyete Göre Hayatta Kalma Oranı**")
+        fig, ax = plt.subplots()
+        sns.barplot(x='Sex', y='Survived', data=df, ci=None, ax=ax)
+        ax.set_ylabel('Hayatta Kalma Oranı')
+        st.pyplot(fig)
+        plt.close(fig)
+    if "Sınıfa Göre Hayatta Kalma Oranı (Bar)" in selected:
+        st.markdown("**Sınıfa Göre Hayatta Kalma Oranı**")
+        fig, ax = plt.subplots()
+        sns.barplot(x='Pclass', y='Survived', data=df, ci=None, ax=ax)
+        ax.set_ylabel('Hayatta Kalma Oranı')
+        st.pyplot(fig)
+        plt.close(fig)
+    if "Biniş Limanına Göre Hayatta Kalma Oranı (Bar)" in selected:
+        st.markdown("**Biniş Limanına Göre Hayatta Kalma Oranı**")
+        fig, ax = plt.subplots()
+        sns.barplot(x='Embarked', y='Survived', data=df, ci=None, ax=ax)
+        ax.set_ylabel('Hayatta Kalma Oranı')
+        st.pyplot(fig)
+        plt.close(fig)
+    if "Aile Büyüklüğüne Göre Hayatta Kalma Oranı (Bar)" in selected:
+        st.markdown("**Aile Büyüklüğüne Göre Hayatta Kalma Oranı**")
+        temp = df.copy()
+        temp['FamilySize'] = temp['SibSp'] + temp['Parch'] + 1
+        fig, ax = plt.subplots()
+        sns.barplot(x='FamilySize', y='Survived', data=temp, ci=None, ax=ax)
+        ax.set_ylabel('Hayatta Kalma Oranı')
+        st.pyplot(fig)
+        plt.close(fig)
+    if "Yaş Dağılımı (KDE)" in selected:
+        st.markdown("**Yaş Dağılımı (KDE)**")
+        fig, ax = plt.subplots()
+        sns.kdeplot(data=df, x='Age', hue='Survived', fill=True, ax=ax)
+        ax.set_title('Yaşa Göre Hayatta Kalma Dağılımı')
+        st.pyplot(fig)
+        plt.close(fig)
+    if "Fare Dağılımı (Boxplot)" in selected:
+        st.markdown("**Fare Dağılımı (Boxplot)**")
+        fig, ax = plt.subplots()
+        sns.boxplot(x='Pclass', y='Fare', hue='Survived', data=df, ax=ax)
+        ax.set_title('Yolcu Sınıfı ve Bilet Ücretine Göre Hayatta Kalma')
+        st.pyplot(fig)
+        plt.close(fig)
+    if "Korelasyon Matrisi (Heatmap)" in selected:
+        st.markdown("**Korelasyon Matrisi (Heatmap)**")
+        numeric_df = df.select_dtypes(include=np.number)
+        fig, ax = plt.subplots(figsize=(10,8))
+        sns.heatmap(numeric_df.corr(), annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5, ax=ax)
+        ax.set_title('Korelasyon Matrisi')
+        st.pyplot(fig)
+        plt.close(fig)
+    if "Cinsiyet Dağılımı (Pie)" in selected:
+        st.markdown("**Cinsiyet Dağılımı (Pie Chart)**")
+        fig, ax = plt.subplots()
+        df['Sex'].value_counts().plot.pie(autopct='%1.1f%%', ax=ax, colors=['#66b3ff','#ff9999'])
+        ax.set_ylabel('')
+        st.pyplot(fig)
+        plt.close(fig)
+    if "Sınıf Dağılımı (Pie)" in selected:
+        st.markdown("**Sınıf Dağılımı (Pie Chart)**")
+        fig, ax = plt.subplots()
+        df['Pclass'].value_counts().sort_index().plot.pie(autopct='%1.1f%%', ax=ax)
+        ax.set_ylabel('')
+        st.pyplot(fig)
+        plt.close(fig)
+    if "Fare-Yaş Dağılımı (Scatter)" in selected:
+        st.markdown("**Fare-Yaş Dağılımı (Scatter Plot)**")
+        fig, ax = plt.subplots()
+        sns.scatterplot(x='Age', y='Fare', hue='Survived', data=df, ax=ax)
+        ax.set_title('Yaş ve Bilet Ücreti Dağılımı')
+        st.pyplot(fig)
+        plt.close(fig)
+    if "Pairplot (Temel Değişkenler)" in selected:
+        st.markdown("**Temel Değişkenler Arası İlişkiler (Pairplot)**")
+        st.info("Pairplot büyük veri setlerinde yavaş olabilir. Sadece ilk 200 satır gösteriliyor.")
+        import seaborn as sns
+        fig = sns.pairplot(df[['Age','Fare','Pclass','Survived','SibSp','Parch']].dropna().sample(min(200, len(df))), hue='Survived')
+        st.pyplot(fig)
+        plt.close('all')
+
+
 # --- Main Content Area ---
 if st.session_state.train_df is not None:
     st.header("📊 Exploratory Data Analysis (EDA)")
@@ -170,11 +297,20 @@ if st.session_state.train_df is not None:
     if st.expander("Show Training Data Description"):
         st.write(st.session_state.train_df.describe(include='all'))
 
+    # Filtre uygula
+    df = st.session_state.train_df.copy()
+    df = df[df['Sex'].isin(filter_sex)]
+    df = df[df['Pclass'].isin(filter_pclass)]
+    df = df[(df['Age'] >= filter_age[0]) & (df['Age'] <= filter_age[1])]
+
+    # Gelişmiş EDA grafikleri
+    plot_eda_graphs(df)
+
     if st.button("Show EDA Plots", key="show_eda_plots"):
         with st.spinner("Generating EDA plots..."):
             # Ensure predictor.data is set for plot_data_analysis
-            if predictor.data is None or not predictor.data.equals(st.session_state.train_df):
-                 predictor.data = st.session_state.train_df.copy()
+            if predictor.data is None or not predictor.data.equals(df):
+                 predictor.data = df.copy()
 
             st.subheader("Key Feature Analysis (from `plot_data_analysis`)")
             st.info("The `plot_data_analysis` method in the original script generates multiple plots. For Streamlit, it's better if such methods return figure objects or are called individually. Below are some representative plots.")
@@ -185,20 +321,20 @@ if st.session_state.train_df is not None:
             
             # Replicating some plots manually for better control:
             fig_age, ax_age = plt.subplots()
-            sns.kdeplot(data=st.session_state.train_df, x='Age', hue='Survived', fill=True, ax=ax_age)
+            sns.kdeplot(data=df, x='Age', hue='Survived', fill=True, ax=ax_age)
             ax_age.set_title('Age Distribution by Survival')
             st.pyplot(fig_age)
             plt.close(fig_age)
 
             fig_fare, ax_fare = plt.subplots()
-            sns.boxplot(x='Pclass', y='Fare', hue='Survived', data=st.session_state.train_df, ax=ax_fare)
+            sns.boxplot(x='Pclass', y='Fare', hue='Survived', data=df, ax=ax_fare)
             ax_fare.set_title('Fare Distribution by Pclass and Survival')
             st.pyplot(fig_fare)
             plt.close(fig_fare)
 
             # Correlation Matrix (on preprocessed data later, or on raw numeric data here)
             st.subheader("Correlation Matrix (Numeric Features of Raw Data)")
-            numeric_df = st.session_state.train_df.select_dtypes(include=np.number)
+            numeric_df = df.select_dtypes(include=np.number)
             if not numeric_df.empty:
                 fig_corr, ax_corr = plt.subplots(figsize=(12, 10))
                 sns.heatmap(numeric_df.corr(), annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5, ax=ax_corr)
