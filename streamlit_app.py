@@ -438,22 +438,71 @@ if st.session_state.train_df is not None:
                     X_test_scaled_array = predictor.scaler.transform(X_test_processed_aligned)
                     st.session_state.X_train_scaled_df = pd.DataFrame(X_train_scaled_array, columns=st.session_state.features_for_scaling)
                     st.session_state.X_test_scaled = X_test_scaled_array
+
                     # --- Model Training ---
                     st.write(f"Model seçimi: {selected_model}")
                     if selected_model == "Otomatik (En iyi CV F1)":
-                        st.info("Tüm modeller ve topluluk modelleri eğitiliyor. Bu işlem biraz zaman alabilir.")
-                        predictor.train_models(st.session_state.X_train_scaled_df, st.session_state.y_train_full)
+                        st.info("Tüm modeller eğitiliyor ve karşılaştırılıyor... Bu işlem biraz zaman alabilir.")
+                        
+                        # Define models and their parameters
+                        models = {
+                            "Logistic Regression": (LogisticRegression(random_state=42), 
+                                {'C': [0.1, 1.0, 10.0], 'solver': ['liblinear'], 'max_iter': [1000]}),
+                            "Decision Tree": (DecisionTreeClassifier(random_state=42), 
+                                {'max_depth': [3, 5, 7], 'min_samples_split': [2, 5], 'min_samples_leaf': [1, 2]}),
+                            "KNN": (KNeighborsClassifier(), 
+                                {'n_neighbors': [3, 5, 7], 'weights': ['uniform', 'distance']}),
+                            "Random Forest": (RandomForestClassifier(random_state=42), 
+                                {'n_estimators': [100], 'max_depth': [5, 7], 'min_samples_split': [2], 'min_samples_leaf': [1]}),
+                            "XGBoost": (XGBClassifier(random_state=42, eval_metric='logloss'), 
+                                {'n_estimators': [100], 'max_depth': [3, 5], 'learning_rate': [0.1], 'subsample': [1.0], 'colsample_bytree': [1.0]})
+                        }
+                        
+                        # Train and evaluate all models
+                        results = []
+                        best_score = -1
+                        best_model_name = None
+                        best_model = None
+                        
+                        for model_name, (base_model, params) in models.items():
+                            st.write(f"Eğitiliyor: {model_name}...")
+                            gs = GridSearchCV(base_model, params, cv=3, scoring='f1_macro', refit=True, n_jobs=-1)
+                            gs.fit(st.session_state.X_train_scaled_df, st.session_state.y_train_full)
+                            
+                            score = gs.best_score_
+                            results.append({
+                                'Model': model_name,
+                                'CV_F1_macro': score,
+                                'CV_Accuracy': gs.cv_results_['mean_test_score'][gs.best_index_]
+                            })
+                            
+                            if score > best_score:
+                                best_score = score
+                                best_model_name = model_name
+                                best_model = gs.best_estimator_
+                        
+                        # Store results
+                        st.session_state.model_performance_results = results
+                        predictor.models = {name: model for name, (model, _) in models.items()}
+                        predictor.best_model = best_model
+                        st.session_state.best_model_name = best_model_name
+                        st.session_state.model_trained = True
+                        
+                        # Show results
+                        st.success(f"En iyi model: {best_model_name} (CV F1-macro: {best_score:.4f})")
+                        st.write("Tüm modellerin performans karşılaştırması:")
+                        perf_df = pd.DataFrame(results)
+                        st.dataframe(perf_df.sort_values('CV_F1_macro', ascending=False))
+                        
                     else:
                         st.info(f"Sadece {selected_model} eğitiliyor...")
-                        # Sadece seçili modeli eğitmek için train_models fonksiyonunu modifiye etmemiz gerekebilir.
-                        # Burada workaround: train_models fonksiyonunu çağırıp, sadece seçili modeli fit edelim.
-                        # train_models fonksiyonunu güncellemek daha iyi olurdu, ama burada hızlıca fit edelim:
                         from sklearn.model_selection import GridSearchCV
                         from sklearn.linear_model import LogisticRegression
                         from sklearn.tree import DecisionTreeClassifier
                         from sklearn.neighbors import KNeighborsClassifier
                         from sklearn.ensemble import RandomForestClassifier
                         from xgboost import XGBClassifier
+                        
                         model_map = {
                             "Logistic Regression": (LogisticRegression(random_state=42), {'C': [1.0], 'solver': ['liblinear'], 'max_iter': [1000]}),
                             "Decision Tree": (DecisionTreeClassifier(random_state=42), {'max_depth': [5], 'min_samples_split': [2], 'min_samples_leaf': [1]}),
@@ -461,6 +510,7 @@ if st.session_state.train_df is not None:
                             "Random Forest": (RandomForestClassifier(random_state=42), {'n_estimators': [100], 'max_depth': [7], 'min_samples_split': [2], 'min_samples_leaf': [1]}),
                             "XGBoost": (XGBClassifier(random_state=42, eval_metric='logloss'), {'n_estimators': [100], 'max_depth': [3], 'learning_rate': [0.1], 'subsample': [1.0], 'colsample_bytree': [1.0]}),
                         }
+                        
                         if selected_model in model_map:
                             base_model, params = model_map[selected_model]
                             gs = GridSearchCV(base_model, params, cv=3, scoring='f1_macro', refit=True, n_jobs=-1)
@@ -469,13 +519,13 @@ if st.session_state.train_df is not None:
                             predictor.models = {selected_model: gs}
                             predictor.best_model = gs.best_estimator_
                             st.session_state.best_model_name = selected_model
-                            st.success(f"{selected_model} başarıyla eğitildi!")
                             st.session_state.model_trained = True
                             st.session_state.model_performance_results = [{
                                 'Model': selected_model,
                                 'CV_F1_macro': gs.best_score_,
                                 'CV_Accuracy': gs.cv_results_['mean_test_score'][gs.best_index_] if 'mean_test_score' in gs.cv_results_ else 0
                             }]
+                            st.success(f"{selected_model} başarıyla eğitildi!")
                         else:
                             st.error(f"{selected_model} için otomatik eğitim desteklenmiyor. Lütfen Otomatik veya temel modellerden birini seçin.")
                             st.session_state.model_trained = False
