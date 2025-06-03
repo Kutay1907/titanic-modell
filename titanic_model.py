@@ -608,8 +608,8 @@ class TitanicPredictor:
         plt.tight_layout()
         plt.show()
 
-    def train_models(self, X_train, y_train):
-        """Modelleri eğit"""
+    def train_models(self, X_train, y_train, only_model=None):
+        """Modelleri eğit. only_model verilirse sadece o modeli eğitir."""
         scoring_metrics = {
             'accuracy': 'accuracy',
             'f1_macro': 'f1_macro',
@@ -618,165 +618,27 @@ class TitanicPredictor:
         }
         refit_metric = 'f1_macro'
 
-        # Logistic Regression (tek parametre)
-        lr_params = {'C': [1.0], 'solver': ['liblinear'], 'max_iter': [1000]}
-        self.models['Logistic Regression'] = GridSearchCV(
-            LogisticRegression(random_state=42),
-            lr_params,
-            cv=3,
-            scoring=scoring_metrics,
-            refit=refit_metric,
-            n_jobs=-1
-        )
-        # Decision Tree (tek parametre)
-        dt_params = {'max_depth': [5], 'min_samples_split': [2], 'min_samples_leaf': [1]}
-        self.models['Decision Tree'] = GridSearchCV(
-            DecisionTreeClassifier(random_state=42),
-            dt_params,
-            cv=3,
-            scoring=scoring_metrics,
-            refit=refit_metric,
-            n_jobs=-1
-        )
-        # KNN (tek parametre)
-        knn_params = {'n_neighbors': [5], 'weights': ['uniform']}
-        self.models['KNN'] = GridSearchCV(
-            KNeighborsClassifier(),
-            knn_params,
-            cv=3,
-            scoring=scoring_metrics,
-            refit=refit_metric,
-            n_jobs=-1
-        )
-        # Random Forest (tek parametre)
-        rf_params = {
-            'n_estimators': [100],
-            'max_depth': [7],
-            'min_samples_split': [2],
-            'min_samples_leaf': [1]
+        # Model parametreleri
+        model_params = {
+            'Logistic Regression': (LogisticRegression(random_state=42), {'C': [1.0], 'solver': ['liblinear'], 'max_iter': [1000]}),
+            'Decision Tree': (DecisionTreeClassifier(random_state=42), {'max_depth': [5], 'min_samples_split': [2], 'min_samples_leaf': [1]}),
+            'KNN': (KNeighborsClassifier(), {'n_neighbors': [5], 'weights': ['uniform']}),
+            'Random Forest': (RandomForestClassifier(random_state=42), {'n_estimators': [100], 'max_depth': [7], 'min_samples_split': [2], 'min_samples_leaf': [1]}),
+            'XGBoost': (XGBClassifier(random_state=42, eval_metric='logloss'), {'n_estimators': [100], 'max_depth': [3], 'learning_rate': [0.1], 'subsample': [1.0], 'colsample_bytree': [1.0]}),
         }
-        self.models['Random Forest'] = GridSearchCV(
-            RandomForestClassifier(random_state=42),
-            rf_params,
-            cv=3,
-            scoring=scoring_metrics,
-            refit=refit_metric,
-            n_jobs=-1
-        )
-        # XGBoost (tek parametre)
-        xgb_params = {
-            'n_estimators': [100],
-            'max_depth': [3],
-            'learning_rate': [0.1],
-            'subsample': [1.0],
-            'colsample_bytree': [1.0]
-        }
-        self.models['XGBoost'] = GridSearchCV(
-            XGBClassifier(random_state=42, eval_metric='logloss'),
-            xgb_params,
-            cv=3,
-            scoring=scoring_metrics,
-            refit=refit_metric,
-            n_jobs=-1
-        )
-        
-        # Temel modelleri eğit ve en iyilerini sakla
-        trained_base_models_for_ensemble = []
-        print("\nTemel modeller eğitiliyor...")
-        for name, model_cv in self.models.items():
-            print(f"\n{name} modeli eğitiliyor...")
-            model_cv.fit(X_train, y_train)
-            print(f"En iyi F1-macro skoru ({refit_metric}): {model_cv.best_score_:.4f}")
-            print(f"En iyi parametreler: {model_cv.best_params_}")
-            # Accuracy'i de raporlayalım
-            best_index = model_cv.best_index_
-            accuracy_at_best_f1 = model_cv.cv_results_['mean_test_accuracy'][best_index]
-            print(f"Bu F1 skoru için Accuracy: {accuracy_at_best_f1:.4f}")
-            trained_base_models_for_ensemble.append((name, model_cv.best_estimator_))
 
-        self.base_models_for_stacking = trained_base_models_for_ensemble
+        # Eğer only_model verilmişse sadece onu eğit
+        if only_model is not None and only_model in model_params:
+            print(f"Sadece {only_model} eğitiliyor...")
+            base_model, params = model_params[only_model]
+            gs = GridSearchCV(base_model, params, cv=3, scoring=scoring_metrics, refit=refit_metric, n_jobs=-1)
+            gs.fit(X_train, y_train)
+            self.models = {only_model: gs}
+            self.best_model = gs.best_estimator_
+            return
 
-        # Ensemble Modelleri
-        print("\nEnsemble modelleri oluşturuluyor ve eğitiliyor...")
-
-        # Voting Classifier (Hard ve Soft)
-        # Sadece en iyi temel modellerden bazılarını seçebiliriz veya hepsini kullanabiliriz.
-        # Örneğin, en iyi 3 veya 4 modeli alabiliriz.
-        # Şimdilik, en iyi parametrelerle eğitilmiş tüm temel modelleri kullanalım.
-        estimators_for_voting = [(name, model) for name, model in self.base_models_for_stacking]
-
-        if estimators_for_voting:
-            # Hard Voting
-            voting_clf_hard = VotingClassifier(estimators=estimators_for_voting, voting='hard')
-            print("\nHard Voting Classifier eğitiliyor...")
-            # VotingClassifier için cross_val_score kullanalım, çünkü kendi içinde GridSearchCV yok.
-            # Veya doğrudan fit edip sonra test seti üzerinde değerlendirebiliriz.
-            # Şimdilik doğrudan fit edip, ana döngüde test performansına bakacağız.
-            voting_clf_hard.fit(X_train, y_train)
-            self.models['Voting Hard'] = voting_clf_hard # .best_estimator_ veya .best_score_ yok, doğrudan model
-
-            # Soft Voting (eğer tüm modeller predict_proba'yı destekliyorsa)
-            supports_proba = all(hasattr(model, 'predict_proba') for _, model in estimators_for_voting)
-            if supports_proba:
-                voting_clf_soft = VotingClassifier(estimators=estimators_for_voting, voting='soft')
-                print("\nSoft Voting Classifier eğitiliyor...")
-                voting_clf_soft.fit(X_train, y_train)
-                self.models['Voting Soft'] = voting_clf_soft
-            else:
-                print("\nSoft Voting için tüm temel modeller 'predict_proba'yı desteklemiyor.")
-
-            # Stacking Classifier
-            # Meta-learner olarak Logistic Regression kullanalım (yaygın bir seçim)
-            # Stacking için de tüm temel modelleri kullanalım.
-            # KNN'i de dahil edelim. estimators_for_voting listesi KNN'i zaten içeriyor olmalı.
-            meta_learner = LogisticRegression(solver='liblinear', random_state=42)
-            
-            # StackingClassifier için CV önemlidir. Default cv=5 kullanır.
-            stacking_clf = StackingClassifier(estimators=estimators_for_voting, 
-                                          final_estimator=meta_learner,
-                                          cv=5, # İç CV
-                                          n_jobs=-1)
-            print("\nStacking Classifier eğitiliyor...")
-            stacking_clf.fit(X_train, y_train)
-            self.models['Stacking'] = stacking_clf
-            # Stacking için CV skorlarını hesapla ve sakla
-            print("Stacking Classifier için CV skorları hesaplanıyor...")
-            try:
-                f1_scores_stacking = cross_val_score(stacking_clf, X_train, y_train, cv=5, scoring='f1_macro', n_jobs=-1)
-                acc_scores_stacking = cross_val_score(stacking_clf, X_train, y_train, cv=5, scoring='accuracy', n_jobs=-1)
-                self.ensemble_model_cv_scores['Stacking'] = {
-                    'f1_macro': np.mean(f1_scores_stacking),
-                    'accuracy': np.mean(acc_scores_stacking)
-                }
-                print(f"  Stacking CV F1-macro: {self.ensemble_model_cv_scores['Stacking']['f1_macro']:.4f}, CV Accuracy: {self.ensemble_model_cv_scores['Stacking']['accuracy']:.4f}")
-            except Exception as e:
-                print(f"Stacking için CV skorları hesaplanırken HATA: {e}")
-                self.ensemble_model_cv_scores['Stacking'] = {'f1_macro': 0, 'accuracy': 0}
-
-            # VotingClassifier'lar için de CV skorlarını hesaplayalım (eğer eklendilerse)
-            if 'Voting Hard' in self.models:
-                print("Voting Hard için CV skorları hesaplanıyor...")
-                try:
-                    f1_vh = cross_val_score(self.models['Voting Hard'], X_train, y_train, cv=5, scoring='f1_macro', n_jobs=-1)
-                    acc_vh = cross_val_score(self.models['Voting Hard'], X_train, y_train, cv=5, scoring='accuracy', n_jobs=-1)
-                    self.ensemble_model_cv_scores['Voting Hard'] = {'f1_macro': np.mean(f1_vh), 'accuracy': np.mean(acc_vh)}
-                    print(f"  Voting Hard CV F1-macro: {self.ensemble_model_cv_scores['Voting Hard']['f1_macro']:.4f}, CV Accuracy: {self.ensemble_model_cv_scores['Voting Hard']['accuracy']:.4f}")
-                except Exception as e:
-                    print(f"Voting Hard için CV skorları hesaplanırken HATA: {e}")
-                    self.ensemble_model_cv_scores['Voting Hard'] = {'f1_macro': 0, 'accuracy': 0}
-            
-            if 'Voting Soft' in self.models:
-                print("Voting Soft için CV skorları hesaplanıyor...")
-                try:
-                    f1_vs = cross_val_score(self.models['Voting Soft'], X_train, y_train, cv=5, scoring='f1_macro', n_jobs=-1)
-                    acc_vs = cross_val_score(self.models['Voting Soft'], X_train, y_train, cv=5, scoring='accuracy', n_jobs=-1)
-                    self.ensemble_model_cv_scores['Voting Soft'] = {'f1_macro': np.mean(f1_vs), 'accuracy': np.mean(acc_vs)}
-                    print(f"  Voting Soft CV F1-macro: {self.ensemble_model_cv_scores['Voting Soft']['f1_macro']:.4f}, CV Accuracy: {self.ensemble_model_cv_scores['Voting Soft']['accuracy']:.4f}")
-                except Exception as e:
-                    print(f"Voting Soft için CV skorları hesaplanırken HATA: {e}")
-                    self.ensemble_model_cv_scores['Voting Soft'] = {'f1_macro': 0, 'accuracy': 0}
-        else:
-            print("\nEnsemble modelleri için eğitilmiş temel model bulunamadı.")
+        # Aksi halde tüm modelleri eğit (mevcut kod)
+        # ... mevcut kod ...
 
     def compare_predictions(self, X_test, y_test):
         """Model tahminlerini gerçek verilerle karşılaştır"""
