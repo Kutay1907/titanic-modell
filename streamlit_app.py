@@ -129,7 +129,7 @@ filter_age = st.sidebar.slider("Yaş Aralığı", 0, 80, (0,80))
 
 # --- Model seçimi ---
 st.sidebar.header("Model Seçimi")
-model_options = ["Otomatik (En iyi CV F1)", "Logistic Regression", "Decision Tree", "KNN", "Random Forest", "XGBoost", "Voting Hard", "Voting Soft", "Stacking"]
+model_options = ["Otomatik (En iyi CV F1)", "Logistic Regression", "Decision Tree", "KNN", "Random Forest", "XGBoost"]
 selected_model = st.sidebar.selectbox("Kullanılacak Model", model_options, index=0)
 
 # --- Özet kutuları için yardımcı fonksiyon ---
@@ -627,61 +627,60 @@ if st.session_state.train_df is not None:
         
         st.header("🧠 Model Interpretation with SHAP")
         if predictor.best_model and st.session_state.best_model_name and st.session_state.X_test_scaled is not None and st.session_state.features_for_scaling is not None:
-            if st.button(f"Run SHAP Analysis for {st.session_state.best_model_name}", key="shap_button"):
-                with st.spinner("Calculating SHAP values... This can take time."):
-                    try:
-                        best_model_for_shap = predictor.best_model
-                        
-                        # Prepare background data
-                        if st.session_state.X_train_scaled_df.shape[0] > 50:
-                            background_data = shap.sample(st.session_state.X_train_scaled_df, 50)
-                        else:
-                            background_data = st.session_state.X_train_scaled_df.copy()
-                        
-                        # Handle NaN values in background data
-                        background_data = background_data.fillna(background_data.mean())
-                        
-                        # Prepare test data for SHAP
-                        X_test_scaled_df_for_shap = pd.DataFrame(st.session_state.X_test_scaled, columns=st.session_state.features_for_scaling)
-                        if X_test_scaled_df_for_shap.shape[0] > 100:
-                            X_test_scaled_df_for_shap = X_test_scaled_df_for_shap.sample(100, random_state=42)
-                        
-                        # Handle NaN values in test data
-                        X_test_scaled_df_for_shap = X_test_scaled_df_for_shap.fillna(X_test_scaled_df_for_shap.mean())
+            # Check if the model supports SHAP analysis
+            shap_supported_models = ["Random Forest", "XGBoost", "Decision Tree"]
+            if st.session_state.best_model_name in shap_supported_models:
+                if st.button(f"Run SHAP Analysis for {st.session_state.best_model_name}", key="shap_button"):
+                    with st.spinner("Calculating SHAP values... This can take time."):
+                        try:
+                            best_model_for_shap = predictor.best_model
+                            
+                            # Prepare background data
+                            if st.session_state.X_train_scaled_df.shape[0] > 50:
+                                background_data = shap.sample(st.session_state.X_train_scaled_df, 50)
+                            else:
+                                background_data = st.session_state.X_train_scaled_df.copy()
+                            
+                            # Handle NaN values in background data
+                            background_data = background_data.fillna(background_data.mean())
+                            
+                            # Prepare test data for SHAP
+                            X_test_scaled_df_for_shap = pd.DataFrame(st.session_state.X_test_scaled, columns=st.session_state.features_for_scaling)
+                            if X_test_scaled_df_for_shap.shape[0] > 100:
+                                X_test_scaled_df_for_shap = X_test_scaled_df_for_shap.sample(100, random_state=42)
+                            
+                            # Handle NaN values in test data
+                            X_test_scaled_df_for_shap = X_test_scaled_df_for_shap.fillna(X_test_scaled_df_for_shap.mean())
 
-                        explainer = None
-                        # Check model type for appropriate explainer
-                        if isinstance(best_model_for_shap, (RandomForestClassifier, XGBClassifier, DecisionTreeClassifier)):
+                            # Use TreeExplainer for tree-based models
                             explainer = shap.TreeExplainer(best_model_for_shap, data=background_data)
-                        else:
-                            # For non-tree models, use a faster alternative
-                            st.write(f"Using LinearExplainer for {st.session_state.best_model_name} (faster than KernelExplainer).")
-                            explainer = shap.LinearExplainer(best_model_for_shap, background_data)
-                        
-                        # Calculate SHAP values
-                        shap_values = explainer.shap_values(X_test_scaled_df_for_shap)
+                            
+                            # Calculate SHAP values
+                            shap_values = explainer.shap_values(X_test_scaled_df_for_shap)
 
-                        # SHAP plots
-                        st.subheader("SHAP Summary Plot (Bar)")
-                        fig_shap_bar, ax_shap_bar = plt.subplots()
-                        # For binary classification, shap_values can be a list [shap_values_class0, shap_values_class1]
-                        shap_val_to_plot = shap_values[1] if isinstance(shap_values, list) and len(shap_values) == 2 else shap_values
-                        shap.summary_plot(shap_val_to_plot, X_test_scaled_df_for_shap, plot_type="bar", show=False)
-                        st.pyplot(plt.gcf())
-                        plt.close(fig_shap_bar)
+                            # SHAP plots
+                            st.subheader("SHAP Summary Plot (Bar)")
+                            fig_shap_bar, ax_shap_bar = plt.subplots()
+                            # For binary classification, shap_values can be a list [shap_values_class0, shap_values_class1]
+                            shap_val_to_plot = shap_values[1] if isinstance(shap_values, list) and len(shap_values) == 2 else shap_values
+                            shap.summary_plot(shap_val_to_plot, X_test_scaled_df_for_shap, plot_type="bar", show=False)
+                            st.pyplot(plt.gcf())
+                            plt.close(fig_shap_bar)
 
-                        st.subheader("SHAP Summary Plot (Dot/Violin)")
-                        fig_shap_dot, ax_shap_dot = plt.subplots()
-                        shap.summary_plot(shap_val_to_plot, X_test_scaled_df_for_shap, show=False)
-                        st.pyplot(plt.gcf())
-                        plt.close(fig_shap_dot)
-                        
-                    except Exception as e:
-                        st.error(f"Error during SHAP analysis: {str(e)}")
-                        import traceback
-                        st.error("Detailed error information:")
-                        st.code(traceback.format_exc())
-        
+                            st.subheader("SHAP Summary Plot (Dot/Violin)")
+                            fig_shap_dot, ax_shap_dot = plt.subplots()
+                            shap.summary_plot(shap_val_to_plot, X_test_scaled_df_for_shap, show=False)
+                            st.pyplot(plt.gcf())
+                            plt.close(fig_shap_dot)
+                            
+                        except Exception as e:
+                            st.error(f"Error during SHAP analysis: {str(e)}")
+                            import traceback
+                            st.error("Detailed error information:")
+                            st.code(traceback.format_exc())
+            else:
+                st.info(f"SHAP analizi şu anda {st.session_state.best_model_name} modeli için desteklenmiyor. SHAP analizi sadece ağaç tabanlı modeller (Random Forest, XGBoost, Decision Tree) için kullanılabilir.")
+
         st.header("🙋 Individual Passenger Prediction")
         if predictor.best_model and st.session_state.features_for_scaling:
             st.write(f"Using model: **{st.session_state.best_model_name}** for prediction.")
