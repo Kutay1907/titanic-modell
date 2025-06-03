@@ -194,11 +194,15 @@ def plot_eda_graphs(df):
         "Biniş Limanına Göre Hayatta Kalma Oranı (Bar)",
         "Aile Büyüklüğüne Göre Hayatta Kalma Oranı (Bar)",
         "Yaş Dağılımı (KDE)",
+        "Yaş Dağılımı (Histogram)",
         "Fare Dağılımı (Boxplot)",
+        "Fare Dağılımı (Violin)",
         "Korelasyon Matrisi (Heatmap)",
         "Cinsiyet Dağılımı (Pie)",
         "Sınıf Dağılımı (Pie)",
         "Fare-Yaş Dağılımı (Scatter)",
+        "Cinsiyet ve Sınıfa Göre Hayatta Kalma (Stacked Bar)",
+        "Eksik Veri Matrisi (Heatmap)",
         "Pairplot (Temel Değişkenler)",
     ]
     selected = st.multiselect("Grafik Seç:", eda_options, default=eda_options[:3])
@@ -210,10 +214,11 @@ def plot_eda_graphs(df):
         fig, ax = plt.subplots()
         data = df.groupby('Sex')['Survived'].mean().reset_index()
         data['Survived'] = data['Survived'] * 100
-        sns.barplot(x='Sex', y='Survived', data=data, ci=None, ax=ax)
+        sns.barplot(x='Sex', y='Survived', data=data, ci=None, ax=ax, palette='Set2')
         ax.set_ylabel('Hayatta Kalma Oranı (%)')
         for i, v in enumerate(data['Survived']):
             ax.text(i, v + 1, f"%{v:.1f}", ha='center')
+        ax.set_title('Cinsiyete Göre Hayatta Kalma Oranı', fontsize=14)
         st.pyplot(fig)
         plt.close(fig)
     if "Sınıfa Göre Hayatta Kalma Oranı (Bar)" in selected:
@@ -221,10 +226,11 @@ def plot_eda_graphs(df):
         fig, ax = plt.subplots()
         data = df.groupby('Pclass')['Survived'].mean().reset_index()
         data['Survived'] = data['Survived'] * 100
-        sns.barplot(x='Pclass', y='Survived', data=data, ci=None, ax=ax)
+        sns.barplot(x='Pclass', y='Survived', data=data, ci=None, ax=ax, palette='Set1')
         ax.set_ylabel('Hayatta Kalma Oranı (%)')
         for i, v in enumerate(data['Survived']):
             ax.text(i, v + 1, f"%{v:.1f}", ha='center')
+        ax.set_title('Sınıfa Göre Hayatta Kalma Oranı', fontsize=14)
         st.pyplot(fig)
         plt.close(fig)
     if "Biniş Limanına Göre Hayatta Kalma Oranı (Bar)" in selected:
@@ -232,10 +238,11 @@ def plot_eda_graphs(df):
         fig, ax = plt.subplots()
         data = df.groupby('Embarked')['Survived'].mean().reset_index()
         data['Survived'] = data['Survived'] * 100
-        sns.barplot(x='Embarked', y='Survived', data=data, ci=None, ax=ax)
+        sns.barplot(x='Embarked', y='Survived', data=data, ci=None, ax=ax, palette='Set3')
         ax.set_ylabel('Hayatta Kalma Oranı (%)')
         for i, v in enumerate(data['Survived']):
             ax.text(i, v + 1, f"%{v:.1f}", ha='center')
+        ax.set_title('Biniş Limanına Göre Hayatta Kalma Oranı', fontsize=14)
         st.pyplot(fig)
         plt.close(fig)
     if "Aile Büyüklüğüne Göre Hayatta Kalma Oranı (Bar)" in selected:
@@ -245,24 +252,39 @@ def plot_eda_graphs(df):
         data = temp.groupby('FamilySize')['Survived'].mean().reset_index()
         data['Survived'] = data['Survived'] * 100
         fig, ax = plt.subplots()
-        sns.barplot(x='FamilySize', y='Survived', data=data, ci=None, ax=ax)
+        sns.barplot(x='FamilySize', y='Survived', data=data, ci=None, ax=ax, palette='Blues')
         ax.set_ylabel('Hayatta Kalma Oranı (%)')
         for i, v in enumerate(data['Survived']):
             ax.text(i, v + 1, f"%{v:.1f}", ha='center')
+        ax.set_title('Aile Büyüklüğüne Göre Hayatta Kalma Oranı', fontsize=14)
         st.pyplot(fig)
         plt.close(fig)
     if "Yaş Dağılımı (KDE)" in selected:
         st.markdown("**Yaş Dağılımı (KDE)**")
         fig, ax = plt.subplots()
-        sns.kdeplot(data=df, x='Age', hue='Survived', fill=True, ax=ax)
-        ax.set_title('Yaşa Göre Hayatta Kalma Dağılımı')
+        sns.kdeplot(data=df, x='Age', hue='Survived', fill=True, ax=ax, palette='husl')
+        ax.set_title('Yaşa Göre Hayatta Kalma Dağılımı', fontsize=14)
+        st.pyplot(fig)
+        plt.close(fig)
+    if "Yaş Dağılımı (Histogram)" in selected:
+        st.markdown("**Yaş Dağılımı (Histogram)**")
+        fig, ax = plt.subplots()
+        sns.histplot(data=df, x='Age', hue='Survived', multiple='stack', bins=30, ax=ax, palette='husl')
+        ax.set_title('Yaş Dağılımı (Histogram)', fontsize=14)
         st.pyplot(fig)
         plt.close(fig)
     if "Fare Dağılımı (Boxplot)" in selected:
         st.markdown("**Fare Dağılımı (Boxplot)**")
         fig, ax = plt.subplots()
-        sns.boxplot(x='Pclass', y='Fare', hue='Survived', data=df, ax=ax)
-        ax.set_title('Yolcu Sınıfı ve Bilet Ücretine Göre Hayatta Kalma')
+        sns.boxplot(x='Pclass', y='Fare', hue='Survived', data=df, ax=ax, palette='Set2')
+        ax.set_title('Yolcu Sınıfı ve Bilet Ücretine Göre Hayatta Kalma', fontsize=14)
+        st.pyplot(fig)
+        plt.close(fig)
+    if "Fare Dağılımı (Violin)" in selected:
+        st.markdown("**Fare Dağılımı (Violin Plot)**")
+        fig, ax = plt.subplots()
+        sns.violinplot(x='Pclass', y='Fare', hue='Survived', data=df, ax=ax, split=True, palette='Set3')
+        ax.set_title('Yolcu Sınıfı ve Bilet Ücretine Göre Hayatta Kalma (Violin)', fontsize=14)
         st.pyplot(fig)
         plt.close(fig)
     if "Korelasyon Matrisi (Heatmap)" in selected:
@@ -270,7 +292,7 @@ def plot_eda_graphs(df):
         numeric_df = df.select_dtypes(include=np.number)
         fig, ax = plt.subplots(figsize=(10,8))
         sns.heatmap(numeric_df.corr(), annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5, ax=ax)
-        ax.set_title('Korelasyon Matrisi')
+        ax.set_title('Korelasyon Matrisi', fontsize=14)
         st.pyplot(fig)
         plt.close(fig)
     if "Cinsiyet Dağılımı (Pie)" in selected:
@@ -279,6 +301,7 @@ def plot_eda_graphs(df):
         counts = df['Sex'].value_counts(normalize=True) * 100
         counts.plot.pie(autopct='%1.1f%%', ax=ax, colors=['#66b3ff','#ff9999'])
         ax.set_ylabel('')
+        ax.set_title('Cinsiyet Dağılımı', fontsize=14)
         st.pyplot(fig)
         plt.close(fig)
     if "Sınıf Dağılımı (Pie)" in selected:
@@ -287,19 +310,36 @@ def plot_eda_graphs(df):
         counts = df['Pclass'].value_counts(normalize=True).sort_index() * 100
         counts.plot.pie(autopct='%1.1f%%', ax=ax)
         ax.set_ylabel('')
+        ax.set_title('Sınıf Dağılımı', fontsize=14)
         st.pyplot(fig)
         plt.close(fig)
     if "Fare-Yaş Dağılımı (Scatter)" in selected:
         st.markdown("**Fare-Yaş Dağılımı (Scatter Plot)**")
         fig, ax = plt.subplots()
-        sns.scatterplot(x='Age', y='Fare', hue='Survived', data=df, ax=ax)
-        ax.set_title('Yaş ve Bilet Ücreti Dağılımı')
+        sns.scatterplot(x='Age', y='Fare', hue='Survived', data=df, ax=ax, palette='husl')
+        ax.set_title('Yaş ve Bilet Ücreti Dağılımı', fontsize=14)
+        st.pyplot(fig)
+        plt.close(fig)
+    if "Cinsiyet ve Sınıfa Göre Hayatta Kalma (Stacked Bar)" in selected:
+        st.markdown("**Cinsiyet ve Sınıfa Göre Hayatta Kalma (Stacked Bar)**")
+        fig, ax = plt.subplots()
+        data = df.groupby(['Sex', 'Pclass'])['Survived'].mean().unstack().fillna(0) * 100
+        data.plot(kind='bar', stacked=True, ax=ax, colormap='viridis')
+        ax.set_ylabel('Hayatta Kalma Oranı (%)')
+        ax.set_title('Cinsiyet ve Sınıfa Göre Hayatta Kalma (Stacked Bar)', fontsize=14)
+        st.pyplot(fig)
+        plt.close(fig)
+    if "Eksik Veri Matrisi (Heatmap)" in selected:
+        st.markdown("**Eksik Veri Matrisi (Heatmap)**")
+        fig, ax = plt.subplots(figsize=(10, 2))
+        sns.heatmap(df.isnull(), cbar=False, yticklabels=False, cmap='viridis', ax=ax)
+        ax.set_title('Eksik Veri Matrisi', fontsize=14)
         st.pyplot(fig)
         plt.close(fig)
     if "Pairplot (Temel Değişkenler)" in selected:
         st.markdown("**Temel Değişkenler Arası İlişkiler (Pairplot)**")
         st.info("Pairplot büyük veri setlerinde yavaş olabilir. Sadece ilk 200 satır gösteriliyor.")
-        fig = sns.pairplot(df[['Age','Fare','Pclass','Survived','SibSp','Parch']].dropna().sample(min(200, len(df))), hue='Survived')
+        fig = sns.pairplot(df[['Age','Fare','Pclass','Survived','SibSp','Parch']].dropna().sample(min(200, len(df))), hue='Survived', palette='husl')
         st.pyplot(fig)
         plt.close('all')
 
@@ -377,19 +417,15 @@ if st.session_state.train_df is not None:
             with st.spinner("Preprocessing data and training models... This may take a few minutes."):
                 try:
                     train_df_features = st.session_state.train_df.drop('Survived', axis=1)
-                    
                     st.write("Preprocessing training data...")
                     st.session_state.processed_train_df = predictor.preprocess_data(train_df_features.copy(), is_train=True)
                     st.write(f"Processed training data shape: {st.session_state.processed_train_df.shape}")
-                    
                     st.write("Preprocessing test data...")
                     st.session_state.processed_test_df = predictor.preprocess_data(st.session_state.test_df.copy(), is_train=False)
                     st.write(f"Processed test data shape: {st.session_state.processed_test_df.shape}")
-
                     st.session_state.features_for_scaling = [col for col in st.session_state.processed_train_df.columns if col not in ['Survived', 'PassengerId']]
                     X_train_processed = st.session_state.processed_train_df[st.session_state.features_for_scaling].copy()
-                    
-                    X_test_aligned = pd.DataFrame(columns=X_train_processed.columns) # Align test set columns
+                    X_test_aligned = pd.DataFrame(columns=X_train_processed.columns)
                     for col in X_train_processed.columns:
                         if col in st.session_state.processed_test_df.columns:
                             X_test_aligned[col] = st.session_state.processed_test_df[col]
@@ -397,62 +433,61 @@ if st.session_state.train_df is not None:
                             st.warning(f"Warning: Column '{col}' not in processed test set, filling with 0.")
                             X_test_aligned[col] = 0
                     X_test_processed_aligned = X_test_aligned[X_train_processed.columns]
-
                     st.write("Scaling data...")
                     X_train_scaled_array = predictor.scaler.fit_transform(X_train_processed)
                     X_test_scaled_array = predictor.scaler.transform(X_test_processed_aligned)
-                    
                     st.session_state.X_train_scaled_df = pd.DataFrame(X_train_scaled_array, columns=st.session_state.features_for_scaling)
-                    st.session_state.X_test_scaled = X_test_scaled_array # Keep as array for model input
-
-                    st.write("Training models (check console for detailed progress from original script)...")
-                    # train_models prints to console. This output won't be in Streamlit UI unless captured.
-                    predictor.train_models(st.session_state.X_train_scaled_df, st.session_state.y_train_full)
-                    st.session_state.model_trained = True
-                    st.success("Models trained successfully!")
-
-                    # Determine best model logic (simplified from original main())
-                    # This relies on predictor.models and predictor.ensemble_model_cv_scores being populated
-                    # by predictor.train_models correctly.
-                    best_model_name = None
-                    best_f1_score = -1
-                    current_model_perf_results = []
-
-                    for name, model_obj in predictor.models.items():
-                        f1 = 0
-                        acc = 0
-                        is_gs = hasattr(model_obj, 'best_score_') # GridSearchCV object
-                        
-                        if is_gs:
-                            best_idx = model_obj.best_index_
-                            f1 = model_obj.cv_results_['mean_test_f1_macro'][best_idx]
-                            acc = model_obj.cv_results_['mean_test_accuracy'][best_idx]
-                        elif name in predictor.ensemble_model_cv_scores: # Ensemble with pre-calculated CV
-                            f1 = predictor.ensemble_model_cv_scores[name].get('f1_macro', 0)
-                            acc = predictor.ensemble_model_cv_scores[name].get('accuracy', 0)
-                        else: # Other models, might need on-the-fly CV or use as-is
-                            st.write(f"CV scores for '{name}' not found in pre-calculated dicts. F1 set to 0 for ranking.")
-                        
-                        current_model_perf_results.append({'Model': name, 'CV_F1_macro': f1, 'CV_Accuracy': acc})
-                        if f1 > best_f1_score:
-                            best_f1_score = f1
-                            best_model_name = name
-                    
-                    st.session_state.model_performance_results = current_model_perf_results
-                    if best_model_name and best_model_name in predictor.models:
-                        predictor.best_model = predictor.models[best_model_name] 
-                        if hasattr(predictor.models[best_model_name], 'best_estimator_'): # If it's a CV object
-                           predictor.best_model = predictor.models[best_model_name].best_estimator_
-                        st.session_state.best_model_name = best_model_name
-                        st.write(f"🏆 Best Model (based on CV F1-macro): **{best_model_name}** (CV F1: {best_f1_score:.4f})")
+                    st.session_state.X_test_scaled = X_test_scaled_array
+                    # --- Model Training ---
+                    st.write(f"Model seçimi: {selected_model}")
+                    if selected_model == "Otomatik (En iyi CV F1)":
+                        st.info("Tüm modeller ve topluluk modelleri eğitiliyor. Bu işlem biraz zaman alabilir.")
+                        predictor.train_models(st.session_state.X_train_scaled_df, st.session_state.y_train_full)
                     else:
-                        st.warning("Could not determine the best model automatically. Please check model performances.")
-                    
+                        st.info(f"Sadece {selected_model} eğitiliyor...")
+                        # Sadece seçili modeli eğitmek için train_models fonksiyonunu modifiye etmemiz gerekebilir.
+                        # Burada workaround: train_models fonksiyonunu çağırıp, sadece seçili modeli fit edelim.
+                        # train_models fonksiyonunu güncellemek daha iyi olurdu, ama burada hızlıca fit edelim:
+                        from sklearn.model_selection import GridSearchCV
+                        from sklearn.linear_model import LogisticRegression
+                        from sklearn.tree import DecisionTreeClassifier
+                        from sklearn.neighbors import KNeighborsClassifier
+                        from sklearn.ensemble import RandomForestClassifier
+                        from xgboost import XGBClassifier
+                        model_map = {
+                            "Logistic Regression": (LogisticRegression(random_state=42), {'C': [1.0], 'solver': ['liblinear'], 'max_iter': [1000]}),
+                            "Decision Tree": (DecisionTreeClassifier(random_state=42), {'max_depth': [5], 'min_samples_split': [2], 'min_samples_leaf': [1]}),
+                            "KNN": (KNeighborsClassifier(), {'n_neighbors': [5], 'weights': ['uniform']}),
+                            "Random Forest": (RandomForestClassifier(random_state=42), {'n_estimators': [100], 'max_depth': [7], 'min_samples_split': [2], 'min_samples_leaf': [1]}),
+                            "XGBoost": (XGBClassifier(random_state=42, eval_metric='logloss'), {'n_estimators': [100], 'max_depth': [3], 'learning_rate': [0.1], 'subsample': [1.0], 'colsample_bytree': [1.0]}),
+                        }
+                        if selected_model in model_map:
+                            base_model, params = model_map[selected_model]
+                            gs = GridSearchCV(base_model, params, cv=3, scoring='f1_macro', refit=True, n_jobs=-1)
+                            st.info(f"{selected_model} için GridSearch başlatıldı...")
+                            gs.fit(st.session_state.X_train_scaled_df, st.session_state.y_train_full)
+                            predictor.models = {selected_model: gs}
+                            predictor.best_model = gs.best_estimator_
+                            st.session_state.best_model_name = selected_model
+                            st.success(f"{selected_model} başarıyla eğitildi!")
+                            st.session_state.model_trained = True
+                            st.session_state.model_performance_results = [{
+                                'Model': selected_model,
+                                'CV_F1_macro': gs.best_score_,
+                                'CV_Accuracy': gs.cv_results_['mean_test_score'][gs.best_index_] if 'mean_test_score' in gs.cv_results_ else 0
+                            }]
+                        else:
+                            st.error(f"{selected_model} için otomatik eğitim desteklenmiyor. Lütfen Otomatik veya temel modellerden birini seçin.")
+                            st.session_state.model_trained = False
+                            st.session_state.model_performance_results = []
+                    st.rerun()
                 except Exception as e:
                     st.error(f"An error occurred during model training: {str(e)}")
                     import traceback
                     st.error(traceback.format_exc())
-                st.rerun() # Rerun to update UI based on new state
+                    st.session_state.model_trained = False
+                    st.session_state.model_performance_results = []
+                    st.rerun()
 
     if st.session_state.model_trained:
         st.subheader("Model Performance Summary")
