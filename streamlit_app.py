@@ -120,28 +120,8 @@ else: # Use default
     st.sidebar.markdown(f"Varsayılan eğitim: `{default_train_file}`")
     st.sidebar.markdown(f"Varsayılan test: `{default_test_file}`")
 
-
-# --- Dinamik filtreler ---
-st.sidebar.header("Veri Filtresi")
-filter_sex = st.sidebar.multiselect("Cinsiyet", ['male', 'female'], default=['male', 'female'])
-filter_pclass = st.sidebar.multiselect("Sınıf", [1,2,3], default=[1,2,3])
-filter_age = st.sidebar.slider("Yaş Aralığı", 0, 80, (0,80))
-
-# --- Model seçimi ---
-st.sidebar.header("Model Seçimi")
-model_options = ["Otomatik (En iyi CV F1)", "Logistic Regression", "Decision Tree", "KNN", "Random Forest", "XGBoost", "Voting Hard", "Voting Soft", "Stacking"]
-selected_model = st.sidebar.selectbox("Kullanılacak Model", model_options, index=0)
-
-# --- Özet kutuları için yardımcı fonksiyon ---
-def summary_card(title, value, color='#4F8BF9'):
-    st.markdown(f"""
-    <div style='background-color:{color};padding:10px 20px;border-radius:10px;margin-bottom:10px'>
-        <h4 style='color:white;margin-bottom:0'>{title}</h4>
-        <h2 style='color:white;margin-top:0'>{value}</h2>
-    </div>
-    """, unsafe_allow_html=True)
-
-if st.sidebar.button("Load Data", key="load_data_button"):
+# Move Load Data button to main area
+if st.button("Load Data", key="load_data_button"):
     # Reset relevant parts of state before loading new data, but keep predictor object
     for key in ['train_df', 'test_df', 'y_train_full', 'test_passenger_ids', 
                 'processed_train_df', 'processed_test_df', 'X_train_scaled_df', 
@@ -154,7 +134,6 @@ if st.sidebar.button("Load Data", key="load_data_button"):
     st.session_state.predictor = get_predictor_instance() # Get a fresh predictor state
     predictor = st.session_state.predictor
 
-
     train_df_loaded = predictor.load_data(train_file_path)
     test_df_loaded = predictor.load_data(test_file_path)
 
@@ -162,27 +141,37 @@ if st.sidebar.button("Load Data", key="load_data_button"):
         st.session_state.train_df = train_df_loaded
         if 'Survived' in train_df_loaded.columns:
             st.session_state.y_train_full = train_df_loaded['Survived'].copy()
-            st.sidebar.success("Training data loaded.")
+            st.success("Training data loaded.")
             # For EDA, predictor.data needs to be set (original script behavior)
             predictor.data = st.session_state.train_df.copy() 
         else:
-            st.sidebar.error("'Survived' column not found in training data.")
+            st.error("'Survived' column not found in training data.")
             st.session_state.train_df = None # Invalidate
     else:
-        st.sidebar.error("Failed to load training data.")
+        st.error("Failed to load training data.")
 
     if test_df_loaded is not None:
         st.session_state.test_df = test_df_loaded
         if 'PassengerId' in test_df_loaded.columns:
             st.session_state.test_passenger_ids = test_df_loaded['PassengerId'].copy()
         else:
-            st.sidebar.warning("PassengerId not found in test data. Submission file might be affected. Generating dummy IDs.")
+            st.warning("PassengerId not found in test data. Submission file might be affected. Generating dummy IDs.")
             st.session_state.test_passenger_ids = pd.Series(range(1, len(test_df_loaded) + 1), name="PassengerId")
-        st.sidebar.success("Test data loaded.")
+        st.success("Test data loaded.")
     else:
-        st.sidebar.error("Failed to load test data.")
+        st.error("Failed to load test data.")
     st.rerun()
 
+# --- Dinamik filtreler ---
+st.sidebar.header("Veri Filtresi")
+filter_sex = st.sidebar.multiselect("Cinsiyet", ['male', 'female'], default=['male', 'female'])
+filter_pclass = st.sidebar.multiselect("Sınıf", [1,2,3], default=[1,2,3])
+filter_age = st.sidebar.slider("Yaş Aralığı", 0, 80, (0,80))
+
+# --- Model seçimi ---
+st.sidebar.header("Model Seçimi")
+model_options = ["Otomatik (En iyi CV F1)", "Logistic Regression", "Decision Tree", "KNN", "Random Forest", "XGBoost", "Voting Hard", "Voting Soft", "Stacking"]
+selected_model = st.sidebar.selectbox("Kullanılacak Model", model_options, index=0)
 
 # --- EDA (Keşifsel Veri Analizi) Gelişmiş ---
 def plot_eda_graphs(df):
@@ -438,22 +427,24 @@ if st.session_state.train_df is not None:
                     X_test_scaled_array = predictor.scaler.transform(X_test_processed_aligned)
                     st.session_state.X_train_scaled_df = pd.DataFrame(X_train_scaled_array, columns=st.session_state.features_for_scaling)
                     st.session_state.X_test_scaled = X_test_scaled_array
+
                     # --- Model Training ---
                     st.write(f"Model seçimi: {selected_model}")
                     if selected_model == "Otomatik (En iyi CV F1)":
                         st.info("Tüm modeller ve topluluk modelleri eğitiliyor. Bu işlem biraz zaman alabilir.")
                         predictor.train_models(st.session_state.X_train_scaled_df, st.session_state.y_train_full)
+                        st.session_state.best_model_name = predictor.best_model_name
+                        st.session_state.model_trained = True
+                        st.session_state.model_performance_results = predictor.model_performance_results
                     else:
                         st.info(f"Sadece {selected_model} eğitiliyor...")
-                        # Sadece seçili modeli eğitmek için train_models fonksiyonunu modifiye etmemiz gerekebilir.
-                        # Burada workaround: train_models fonksiyonunu çağırıp, sadece seçili modeli fit edelim.
-                        # train_models fonksiyonunu güncellemek daha iyi olurdu, ama burada hızlıca fit edelim:
                         from sklearn.model_selection import GridSearchCV
                         from sklearn.linear_model import LogisticRegression
                         from sklearn.tree import DecisionTreeClassifier
                         from sklearn.neighbors import KNeighborsClassifier
                         from sklearn.ensemble import RandomForestClassifier
                         from xgboost import XGBClassifier
+                        
                         model_map = {
                             "Logistic Regression": (LogisticRegression(random_state=42), {'C': [1.0], 'solver': ['liblinear'], 'max_iter': [1000]}),
                             "Decision Tree": (DecisionTreeClassifier(random_state=42), {'max_depth': [5], 'min_samples_split': [2], 'min_samples_leaf': [1]}),
@@ -461,6 +452,7 @@ if st.session_state.train_df is not None:
                             "Random Forest": (RandomForestClassifier(random_state=42), {'n_estimators': [100], 'max_depth': [7], 'min_samples_split': [2], 'min_samples_leaf': [1]}),
                             "XGBoost": (XGBClassifier(random_state=42, eval_metric='logloss'), {'n_estimators': [100], 'max_depth': [3], 'learning_rate': [0.1], 'subsample': [1.0], 'colsample_bytree': [1.0]}),
                         }
+                        
                         if selected_model in model_map:
                             base_model, params = model_map[selected_model]
                             gs = GridSearchCV(base_model, params, cv=3, scoring='f1_macro', refit=True, n_jobs=-1)
@@ -469,13 +461,13 @@ if st.session_state.train_df is not None:
                             predictor.models = {selected_model: gs}
                             predictor.best_model = gs.best_estimator_
                             st.session_state.best_model_name = selected_model
-                            st.success(f"{selected_model} başarıyla eğitildi!")
                             st.session_state.model_trained = True
                             st.session_state.model_performance_results = [{
                                 'Model': selected_model,
                                 'CV_F1_macro': gs.best_score_,
                                 'CV_Accuracy': gs.cv_results_['mean_test_score'][gs.best_index_] if 'mean_test_score' in gs.cv_results_ else 0
                             }]
+                            st.success(f"{selected_model} başarıyla eğitildi!")
                         else:
                             st.error(f"{selected_model} için otomatik eğitim desteklenmiyor. Lütfen Otomatik veya temel modellerden birini seçin.")
                             st.session_state.model_trained = False
