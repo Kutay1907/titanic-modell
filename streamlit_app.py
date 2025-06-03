@@ -685,9 +685,6 @@ if st.session_state.train_df is not None:
         if predictor.best_model and st.session_state.features_for_scaling:
             st.write(f"Using model: **{st.session_state.best_model_name}** for prediction.")
             
-            # Collect raw features similar to the original test set structure
-            # These are features BEFORE any preprocessing by your script.
-            # The preprocess_data method in TitanicPredictor should handle their transformation.
             with st.form(key="individual_prediction_form"):
                 st.subheader("Enter Passenger Details:")
                 cols_form = st.columns(3)
@@ -710,7 +707,7 @@ if st.session_state.train_df is not None:
 
             if submit_button:
                 if input_data['Cabin'].strip().upper() == 'NAN':
-                    input_data['Cabin'] = np.nan # Convert string 'NaN' to actual NaN
+                    input_data['Cabin'] = np.nan
                 
                 passenger_df = pd.DataFrame([input_data])
                 with st.spinner("Processing input and predicting..."):
@@ -724,16 +721,18 @@ if st.session_state.train_df is not None:
                             if col in processed_passenger_df.columns:
                                 aligned_passenger_data[col] = processed_passenger_df[col].iloc[0]
                             else:
-                                # This case needs careful handling. If preprocess_data is consistent, all features should be there.
-                                # Defaulting to 0 if a feature that was present in training is missing after processing the new input.
                                 st.warning(f"Feature '{col}' (expected from training) not found in processed input. Defaulting to 0.")
-                                aligned_passenger_data[col] = 0 
+                                aligned_passenger_data[col] = 0
                         
                         aligned_passenger_df_final = pd.DataFrame([aligned_passenger_data], columns=st.session_state.features_for_scaling)
+                        
+                        # Handle any remaining NaN values
+                        aligned_passenger_df_final = aligned_passenger_df_final.fillna(0)
                         
                         # Scale using the fitted scaler
                         passenger_scaled = predictor.scaler.transform(aligned_passenger_df_final)
                         
+                        # Make prediction
                         prediction = predictor.best_model.predict(passenger_scaled)
                         prediction_proba = predictor.best_model.predict_proba(passenger_scaled)
                         
@@ -743,15 +742,15 @@ if st.session_state.train_df is not None:
                             st.error(f"### Predicted: **Did Not Survive** (Confidence: {prediction_proba[0][0]*100:.1f}%)")
                         
                         if st.checkbox("Show processed data for this passenger?"):
-                             st.write("Original Input:")
-                             st.dataframe(passenger_df)
-                             st.write("Processed Features (before scaling):")
-                             st.dataframe(processed_passenger_df)
-                             st.write("Scaled Features (input to model):")
-                             st.dataframe(pd.DataFrame(passenger_scaled, columns=st.session_state.features_for_scaling))
+                            st.write("Original Input:")
+                            st.dataframe(passenger_df)
+                            st.write("Processed Features (before scaling):")
+                            st.dataframe(processed_passenger_df)
+                            st.write("Scaled Features (input to model):")
+                            st.dataframe(pd.DataFrame(passenger_scaled, columns=st.session_state.features_for_scaling))
 
                     except Exception as e:
-                        st.error(f"Error during individual prediction: {e}")
+                        st.error(f"Error during individual prediction: {str(e)}")
                         st.error(traceback.format_exc())
     else:
         st.info("Train a model first (using the button in 'Model Training & Evaluation' section) to enable individual predictions and other analyses.")
